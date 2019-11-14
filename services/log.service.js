@@ -59,7 +59,7 @@ exports.info = function (filename, functionName, message) {
 function createLogger (filename, formatter) {
   const transports = [new winston.transports.File({ filename: filename })]
 
-  if (process.env.NODE_ENV !== config.env.production) {
+  if (process.env.NODE_ENV !== 'production') {
     transports.push(new winston.transports.Console())
   }
 
