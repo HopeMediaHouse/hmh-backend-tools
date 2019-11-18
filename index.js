@@ -1,7 +1,14 @@
-const logger = require('./services/log.service')
+const logService = require('./services/log.service')
+const knexBaseModel = require('./models/knex_base.model')
 
-exports.initializeLogger = function (app) {
-  logger.initialize(app)
+exports.initializeLogService = function (app) {
+  logService.initialize(app)
 }
 
-exports.logger = logger
+exports.initializeKnexDB = function (database, logService) {
+  knexBaseModel.initialize(database, logService)
+}
+
+exports.errorMessageService = require('./services/error_message.service')
+exports.logService = logService
+exports.KnexBaseModel = knexBaseModel.BaseModel

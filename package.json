@@ -2,6 +2,7 @@
   "name": "hope-media-house-backend-tools",
   "description": "Node.js tools for Hope Media House",
   "dependencies": {
+    "moment-timezone": "0.5.27",
     "morgan": "1.9.1",
     "rotating-file-stream": "1.4.6",
     "winston": "3.2.1"
