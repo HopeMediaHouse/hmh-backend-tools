@@ -11,4 +11,5 @@ exports.initializeKnexDB = function (database, logService) {
 
 exports.errorMessageService = require('./services/error_message.service')
 exports.logService = logService
+exports.responseService = require('./services/response.service')
 exports.KnexBaseModel = knexBaseModel.BaseModel
