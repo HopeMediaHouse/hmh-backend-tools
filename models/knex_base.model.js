@@ -1,57 +1,59 @@
 const errorMessageService = require('../services/error_message.service')
 const moment = require('moment-timezone')
+const privateMap = new WeakMap()
 
 let database = null
 let logService = null
 
 class BaseModel {
-  constructor (name, table, requiredProperties = null, id = 'id') {
-    this._name = name
-    this._table = table
-    this._requiredProperties = requiredProperties
-    this._id = id
+  constructor (name, table, propertyRequirements = null, id = 'id') {
+    privateMap.set(this, {
+      id: id,
+      name: name,
+      propertyRequirements: propertyRequirements,
+      table: table
+    })
   }
 
   async save (transaction) {
-    if (!database) {
-      return Promise.reject(new Error('Could not find database, please verify your connection.'))
+    const canSave = this.canSave()
+    if (canSave !== true) {
+      return Promise.reject(canSave)
     }
 
-    if (this._requiredProperties) {
-      const hasRequiredProperties = this.hasRequiredProperties()
-      if (hasRequiredProperties !== true) {
-        return Promise.reject(hasRequiredProperties)
+    if (this.getPropertyRequirements()) {
+      const hasValidProperties = this.hasValidProperties()
+      if (hasValidProperties !== true) {
+        return Promise.reject(hasValidProperties)
       }
     }
 
-    let query = database(this._table)
-    const identifier = this[this._id]
-
+    let query = database(this.getTableName())
     if (transaction) {
       query = query.transacting(transaction)
     }
 
-    if (identifier && this._id !== 'id') {
+    if (this[this.getIdPropertyName()] && this.getIdPropertyName() !== 'id') {
       try {
-        const existingModel = await database(this._table).where({ [this._id]: identifier }).first()
+        const existingModel = await database(this.getTableName()).where(this.getIdPropertyName(), this[this.getIdPropertyName()]).first()
 
-        query = existingModel ? this.getUpdateQuery(query, identifier) : this.getInsertQuery(query)
+        query = existingModel ? this.getUpdateQuery(query) : this.getInsertQuery(query)
       } catch (error) {
         if (logService && logService.error) {
-          logService.error(__filename, 'save', error.message, { ...this, table: this._name })
+          logService.error(__filename, 'save', error.message, { ...this, table: this.getTableName() })
         }
 
         return Promise.reject(errorMessageService.getGenericError())
       }
-    } else if (identifier) {
-      query = this.getUpdateQuery(query, identifier)
+    } else if (this[this.getIdPropertyName()]) {
+      query = this.getUpdateQuery(query)
     } else {
       query = this.getInsertQuery(query)
     }
 
     return query.then(() => {
-      return database(this._table)
-        .where({ [this._id]: identifier })
+      return database(this.getTableName())
+        .where(this.getIdPropertyName(), this[this.getIdPropertyName()])
         .first()
         .then((data) => {
           this.fill(data)
@@ -59,55 +61,60 @@ class BaseModel {
         })
         .catch((error) => {
           if (logService && logService.error) {
-            logService.error(__filename, 'save', error.message, { ...this, table: this._table })
+            logService.error(__filename, 'save', error.message, { ...this, table: this.getTableName() })
           }
           return Promise.reject(errorMessageService.getGenericError())
         })
     })
   }
 
-  async hasRequiredProperties () {
-    if (!this._requiredProperties) {
+  hasValidProperties () {
+    const propertyRequirements = this.getPropertyRequirements()
+    if (!propertyRequirements) {
       return true
     }
 
     let hasInvalidProperty = false
-    for (let i = 0; i < this._requiredProperties.length; i++) {
-      if (typeof this._requiredProperties[i] !== 'object' || !this._requiredProperties[i].name) {
+    for (let i = 0; i < propertyRequirements.length; i++) {
+      if (typeof propertyRequirements[i] !== 'object' || !propertyRequirements[i].name) {
         continue
       }
 
-      if (!Object.prototype.hasOwnProperty.call(this, this._requiredProperties[i].name)) {
-        return Promise.reject(errorMessageService.getRequiredPropertyError(this._name, this._requiredProperties[i].name))
+      if (propertyRequirements[i].isRequired !== false && !Object.prototype.hasOwnProperty.call(this, propertyRequirements[i].name)) {
+        return errorMessageService.getRequiredPropertyError(this.getModelName(), propertyRequirements[i].name)
       }
 
-      switch (this._requiredProperties[i].type) {
+      if (propertyRequirements[i].isRequired === false && (this[propertyRequirements[i].name] === null || this[propertyRequirements[i].name] === undefined)) {
+        continue
+      }
+
+      switch (propertyRequirements[i].type) {
         case 'int':
-          hasInvalidProperty = isNaN(parseInt(this[this._requiredProperties[i].name]))
+          hasInvalidProperty = isNaN(parseInt(this[propertyRequirements[i].name]))
           break
         case 'float':
-          hasInvalidProperty = isNaN(parseFloat(this[this._requiredProperties[i].name]))
+          hasInvalidProperty = isNaN(parseFloat(this[propertyRequirements[i].name]))
           break
         case 'option':
-          hasInvalidProperty = !this._requiredProperties[i].options.includes(this[this._requiredProperties[i].name])
+          hasInvalidProperty = !propertyRequirements[i].options.includes(this[propertyRequirements[i].name])
           break
         case 'boolean':
-          hasInvalidProperty = typeof this[this._requiredProperties[i].name] !== 'boolean'
+          hasInvalidProperty = typeof this[propertyRequirements[i].name] !== 'boolean'
           break
         case 'string':
-          hasInvalidProperty = !(typeof this[this._requiredProperties[i].name] === 'string' && this[this._requiredProperties[i].name].length > 0)
+          hasInvalidProperty = !(typeof this[propertyRequirements[i].name] === 'string' && this[propertyRequirements[i].name].length > 0)
           break
         case 'date':
-          hasInvalidProperty = !moment(this[this._requiredProperties[i].name], this._requiredProperties[i].format ? this._requiredProperties[i].format : moment.ISO_8601).isValid()
+          hasInvalidProperty = !moment(this[propertyRequirements[i].name], propertyRequirements[i].format ? propertyRequirements[i].format : moment.ISO_8601).isValid()
           break
         default:
-          hasInvalidProperty = !this[this._requiredProperties[i].name]
+          hasInvalidProperty = !this[propertyRequirements[i].name]
       }
 
       if (hasInvalidProperty) {
-        return Promise.reject(errorMessageService.getRequiredPropertyError(
-          this._name,
-          this._requiredProperties[i].displayName ? this._requiredProperties[i].displayName : this._requiredProperties[i].name))
+        return errorMessageService.getRequiredPropertyError(
+          this.getModelName(),
+          propertyRequirements[i].displayName ? propertyRequirements[i].displayName : propertyRequirements[i].name)
       }
     }
 
@@ -116,7 +123,7 @@ class BaseModel {
 
   fill (data) {
     for (const property in data) {
-      if (Object.prototype.hasOwnProperty.call(this, property) && property.charAt(0) !== '_') {
+      if (Object.prototype.hasOwnProperty.call(this, property)) {
         this[property] = data[property]
       }
     }
@@ -124,28 +131,56 @@ class BaseModel {
     return this
   }
 
-  getUpdateQuery (query, identifier) {
-    return query.update(this.getSaveData()).where({ [this._id]: identifier })
+  getUpdateQuery (query) {
+    if (Object.prototype.hasOwnProperty.call(this, 'updatedAt')) {
+      this.updatedAt = new Date().toISOString()
+    }
+
+    return query.update(this).where(this.getIdPropertyName(), this[this.getIdPropertyName()])
   }
 
   getInsertQuery (query) {
-    return query.insert(this.getSaveData()).then((rowsIds) => { this[this._id] = rowsIds[0] })
+    return query.insert(this).then((rowsIds) => { this[this.getIdPropertyName()] = rowsIds[0] })
   }
 
-  getSaveData () {
-    const data = {}
-
-    for (const property in data) {
-      if (Object.prototype.hasOwnProperty.call(this, property) && property.charAt(0) !== '_') {
-        data[property] = this[property]
+  canSave () {
+    if (!database) {
+      if (logService && logService.error) {
+        logService.error(__filename, 'canSave', 'Could not find database, please verify your connection', { ...this })
       }
+
+      return new Error('Could not find database, please verify your connection.')
     }
 
-    if (Object.prototype.hasOwnProperty.call(this, 'updatedAt')) {
-      data.updatedAt = new Date().toISOString()
+    if (!this.getModelName() || !this.getTableName() || !this.getIdPropertyName()) {
+      if (logService && logService.error) {
+        logService.error(__filename, 'canSave', 'Missing map data, this should not happen', { ...privateMap.get(this) })
+      }
+
+      return errorMessageService.getGenericError()
     }
 
-    return data
+    return true
+  }
+
+  getModelName () {
+    const privateMapData = privateMap.get(this)
+    return privateMapData && privateMapData.name ? privateMapData.name : null
+  }
+
+  getTableName () {
+    const privateMapData = privateMap.get(this)
+    return privateMapData && privateMapData.table ? privateMapData.table : null
+  }
+
+  getIdPropertyName () {
+    const privateMapData = privateMap.get(this)
+    return privateMapData && privateMapData.id ? privateMapData.id : null
+  }
+
+  getPropertyRequirements () {
+    const privateMapData = privateMap.get(this)
+    return privateMapData & privateMapData.propertyRequirements ? privateMapData.propertyRequirements : null
   }
 }
 
