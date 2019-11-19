@@ -150,7 +150,7 @@ class BaseModel {
 }
 
 exports.initialize = function (knexDB, logger) {
-  if (!database) {
+  if (!knexDB) {
     return false
   }
 
