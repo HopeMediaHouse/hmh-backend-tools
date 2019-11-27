@@ -180,7 +180,7 @@ class BaseModel {
 
   getPropertyRequirements () {
     const privateMapData = privateMap.get(this)
-    return privateMapData & privateMapData.propertyRequirements ? privateMapData.propertyRequirements : null
+    return privateMapData && privateMapData.propertyRequirements ? privateMapData.propertyRequirements : null
   }
 }
 
