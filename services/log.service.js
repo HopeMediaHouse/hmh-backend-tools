@@ -72,7 +72,7 @@ function createLogger (filename, formatter) {
 }
 
 function createRotatingFileStream (filename) {
-  return rfs(filename, {
+  return rfs.createStream(filename, {
     path: config.folder,
     size: config.rotateSize
   })
