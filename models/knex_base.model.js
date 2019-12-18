@@ -115,7 +115,7 @@ class BaseModel {
       }
 
       if (hasInvalidProperty) {
-        return errorMessageService.getRequiredPropertyError(
+        return errorMessageService.getInvalidPropertyError(
           this.getModelName(),
           propertyRequirements[i].displayName ? propertyRequirements[i].displayName : propertyRequirements[i].name)
       }
