@@ -80,8 +80,11 @@ class BaseModel {
         continue
       }
 
-      if (propertyRequirements[i].isRequired !== false && !Object.prototype.hasOwnProperty.call(this, propertyRequirements[i].name)) {
-        return errorMessageService.getRequiredPropertyError(this.getModelName(), propertyRequirements[i].name)
+      if (propertyRequirements[i].isRequired !== false &&
+        (!Object.prototype.hasOwnProperty.call(this, propertyRequirements[i].name) || this[propertyRequirements[i].name] === null)) {
+        return errorMessageService.getRequiredPropertyError(
+          this.getModelName(),
+          propertyRequirements[i].displayName ? propertyRequirements[i].displayName : propertyRequirements[i].name)
       }
 
       if (propertyRequirements[i].isRequired === false && (this[propertyRequirements[i].name] === null || this[propertyRequirements[i].name] === undefined)) {
