@@ -59,13 +59,13 @@ class BaseModel {
           this.fill(data)
           return this
         })
-        .catch((error) => {
-          if (logService && logService.error) {
-            logService.error(__filename, 'save', error.message, { ...this, table: this.getTableName() })
-          }
-          return Promise.reject(errorMessageService.getGenericError())
-        })
     })
+      .catch((error) => {
+        if (logService && logService.error) {
+          logService.error(__filename, 'save', error.message, { ...this, table: this.getTableName() })
+        }
+        return Promise.reject(errorMessageService.getGenericError())
+      })
   }
 
   hasValidProperties () {
