@@ -52,7 +52,12 @@ class BaseModel {
     }
 
     return query.then(() => {
-      return database(this.getTableName())
+      const returnQuery = database(this.getTableName())
+      if (transaction) {
+        returnQuery.transacting(transaction)
+      }
+
+      return returnQuery
         .where(this.getIdPropertyName(), this[this.getIdPropertyName()])
         .first()
         .then((data) => {
