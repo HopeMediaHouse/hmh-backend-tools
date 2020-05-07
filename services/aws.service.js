@@ -9,6 +9,25 @@ exports.initialize = function (config, logger) {
   logService = logger
 }
 
+exports.getSignedS3Url = async function (bucket, file) {
+  return new Promise((resolve) => {
+    new aws.S3().getSignedUrl('getObject', {
+      Bucket: bucket,
+      Key: file
+    }, function (error, url) {
+      if (error) {
+        if (logService) {
+          logService.error(__filename, 'getSignedS3Url', error.message, { bucket: bucket, file: file })
+        }
+
+        return resolve(null)
+      }
+
+      resolve(url)
+    })
+  })
+}
+
 exports.upload = async function (bucket, folder, req, res) {
   if (!bucket) {
     return Promise.reject(new Error('AWS is not initialized'))
