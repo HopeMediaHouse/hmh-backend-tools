@@ -148,7 +148,11 @@ class BaseModel {
   }
 
   getInsertQuery (query) {
-    return query.insert(this).then((rowsIds) => { this[this.getIdPropertyName()] = rowsIds[0] })
+    return query.insert(this).then((rowsIds) => {
+      if (this.getIdPropertyName() === 'id') {
+        this[this.getIdPropertyName()] = rowsIds[0]
+      }
+    })
   }
 
   canSave () {
