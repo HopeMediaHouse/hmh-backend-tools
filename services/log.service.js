@@ -53,13 +53,18 @@ exports.error = function (filename, functionName, message, parameters) {
       parsedParams = 'Unable to parse parameters.'
     }
 
-    errorLogger.log({
+    const properties = {
       level: 'error',
       message: message,
       filename: filename,
-      functionName: functionName,
-      parameters: parsedParams
-    })
+      functionName: functionName
+    }
+
+    if (parsedParams) {
+      properties.parameters = parsedParams
+    }
+
+    errorLogger.log(properties)
   }
 }
 
