@@ -46,7 +46,20 @@ exports.initialize = function (app) {
 
 exports.error = function (filename, functionName, message, parameters) {
   if (errorLogger) {
-    errorLogger.log({ level: 'error', message: message, filename: filename, functionName: functionName, parameters: JSON.stringify(parameters) })
+    let parsedParams = null
+    try {
+      parsedParams = parameters ? JSON.stringify(parameters) : null
+    } catch (error) {
+      parsedParams = 'Unable to parse parameters.'
+    }
+
+    errorLogger.log({
+      level: 'error',
+      message: message,
+      filename: filename,
+      functionName: functionName,
+      parameters: parsedParams
+    })
   }
 }
 
