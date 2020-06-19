@@ -57,11 +57,8 @@ exports.error = function (filename, functionName, message, parameters) {
       level: 'error',
       message: message,
       filename: filename,
-      functionName: functionName
-    }
-
-    if (parsedParams) {
-      properties.parameters = parsedParams
+      functionName: functionName,
+      parameters: parsedParams
     }
 
     errorLogger.log(properties)
