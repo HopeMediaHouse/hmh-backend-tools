@@ -10,12 +10,14 @@ exports.initialize = function (config, logger) {
   logService = logger
 }
 
-exports.getSignedS3Url = async function (bucket, file) {
+exports.getSignedS3Url = async function (bucket, file, expires = null) {
+  const config = { Bucket: bucket, Key: file }
+  if (expires) {
+    config.Expires = expires
+  }
+
   return new Promise((resolve) => {
-    new aws.S3().getSignedUrl('getObject', {
-      Bucket: bucket,
-      Key: file
-    }, function (error, url) {
+    new aws.S3().getSignedUrl('getObject', config, function (error, url) {
       if (error) {
         if (logService) {
           logService.error(__filename, 'getSignedS3Url', error.message, { bucket: bucket, file: file })
