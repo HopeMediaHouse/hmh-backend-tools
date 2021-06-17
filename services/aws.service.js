@@ -97,3 +97,25 @@ exports.uploadFromUrl = async function (bucket, folder, url) {
     })
   })
 }
+
+exports.uploadFile = async function (bucket, folder, fileName, content) {
+  if (!bucket) {
+    return Promise.reject(new Error('AWS is not initialized'))
+  }
+
+  return new Promise(function (resolve, reject) {
+    const key = folder + fileName
+    const params = {
+      Bucket: bucket,
+      Key: key,
+      Body: content
+    }
+
+    new aws.S3().upload(params, function (err, data) {
+      if (err) {
+        return reject(new Error('File upload error'))
+      }
+      resolve(key)
+    })
+  })
+}
